@@ -7,6 +7,7 @@ import pandas as pd
 import io
 
 API_URL = "https://api.anthropic.com/v1/messages"
+MAX_IMAGE_MB = 5
 
 def get_api_key(file): 
     """
@@ -76,6 +77,11 @@ def encode_image(image_path):
         tuple: (base64_string, media_type) or (None, None) if error
     """
     try:
+        # Check if file size is less than 5MB
+        file_size_bytes = os.path.getsize(image_path)
+        if file_size_bytes > MAX_IMAGE_MB * 1024 * 1024:
+            raise ValueError(f"Image file is too large: {file_size_bytes / (1024*1024):.2f}MB (limit is {MAX_IMAGE_MB}MB)")
+        
         # Get file extension to determine media type
         file_ext = Path(image_path).suffix.lower()
         media_type_map = {
