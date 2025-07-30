@@ -5,6 +5,7 @@ import base64
 from pathlib import Path
 import pandas as pd
 import io
+import time
 
 API_URL = "https://api.anthropic.com/v1/messages"
 MAX_IMAGE_MB = 5
@@ -117,6 +118,11 @@ def call_claude(prompt, headers, image_path = None, model="claude-sonnet-4-20250
     Returns:
         dict: API response
     """
+
+    # For Rate Limiting Purposes 
+    print("hi")
+    time.sleep(5)
+    print("hi2")
     
     # Set content to the prompt
     content = [{"type": "text", "text": prompt}]

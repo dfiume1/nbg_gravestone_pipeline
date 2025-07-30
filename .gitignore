@@ -1,2 +1,6 @@
 # Ignores API Credentials
 code/credentials.txt
+venv/
+__pycache__/
+*.pyc
+*.png
