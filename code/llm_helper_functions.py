@@ -261,8 +261,6 @@ def transcription_info(transcriptions, prompt, columns, headers, debug=False, ma
         while attempt < max_retries:
             try:
                 full_prompt = prompt + trans
-                print(full_prompt)
-
                 result = call_claude(full_prompt, headers=headers, debug=debug)
 
                 if not result or 'content' not in result or not result['content']:
@@ -282,14 +280,29 @@ def transcription_info(transcriptions, prompt, columns, headers, debug=False, ma
                 attempt += 1
                 if debug:
                     print(f"[Retry {attempt}/{max_retries}] Error with transcription:\n{trans}")
+                    print(f"Error: {e}")  # Added to see the specific error
                     traceback.print_exc()
                 time.sleep(retry_delay)
 
         if result_list is None:
-            # Create a row of error messages + the transcription
+            # Create a row that exactly matches the expected DataFrame structure
             result_list = [f"[ERROR after {max_retries} attempts]"] * (len(columns) - 1)
 
+        # Ensure result_list + transcription matches column count exactly
         result_list.append(trans)  # Include transcription at the end
-        all_results.append(result_list)
+    
+        # Safety check before adding to results
+        if len(result_list) != len(columns):
+            if debug:
+                print(f"Warning: Row length mismatch. Expected {len(columns)}, got {len(result_list)}")
+                print(f"Columns: {columns}")
+                print(f"Result: {result_list}")
+            # Truncate or pad to match expected length
+            if len(result_list) > len(columns):
+                result_list = result_list[:len(columns)]
+            else:
+                result_list.extend(['[MISSING]'] * (len(columns) - len(result_list)))
+    
+    all_results.append(result_list)
 
     return pd.DataFrame(all_results, columns=columns)
