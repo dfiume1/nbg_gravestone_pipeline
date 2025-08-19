@@ -6,9 +6,10 @@ from pathlib import Path
 import pandas as pd
 import io
 import time
+import traceback
 
 API_URL = "https://api.anthropic.com/v1/messages"
-MAX_IMAGE_MB = 5
+MAX_IMAGE_MB = 5 # Claude Limit 
 
 def get_api_key(file): 
     """
@@ -120,9 +121,7 @@ def call_claude(prompt, headers, image_path = None, model="claude-sonnet-4-20250
     """
 
     # For Rate Limiting Purposes 
-    print("hi")
-    time.sleep(5)
-    print("hi2")
+    time.sleep(2)
     
     # Set content to the prompt
     content = [{"type": "text", "text": prompt}]
@@ -177,3 +176,120 @@ def call_claude(prompt, headers, image_path = None, model="claude-sonnet-4-20250
             print(f"Response status: {e.response.status_code}")
             print(f"Response text: {e.response.text}")
         return None
+    
+
+
+def gravestone_desc(input_folder, prompts, columns, headers, debug=False, max_retries=3, retry_delay=2):
+    """
+    Uses the helper function to get all the names of the images, then calls claude with each prompt for each image.
+    Puts all the information for each image in a row of a dataframe.
+    
+    Args:
+        input_folder str: Folder path with the images
+        prompts list(str): List of User-Specified Prompts for Claude
+        columns list(str): Corresponding list of columns to store the results of the above prompts
+        debug boolean: Debug mode. Turn on if you encounter errors and want to see the full debug message from anthropic. 
+    Returns:
+        df(DataFrame): Dataframe with the columns specified in columns
+    """
+
+    files = list_files_in_folder(input_folder)
+    all_results = []
+
+    for image in files:
+        image_result = [image]
+        image_path = input_folder + image
+
+        for prompt in prompts:
+            attempt = 0
+            result_text = None
+
+            # Error Handle if things go wrong, all data isn't lost
+            while attempt < max_retries:
+                try:
+                    result = call_claude(prompt, headers=headers, image_path=image_path, debug=debug)
+                    
+                    if result is not None and 'content' in result and result['content']:
+                        result_text = result['content'][0].get('text', '')
+                        break  # success
+                    else:
+                        raise ValueError("Claude response malformed or empty")
+
+                except Exception as e:
+                    attempt += 1
+                    if debug:
+                        print(f"[Retry {attempt}/{max_retries}] Error with image '{image}' and prompt:\n{prompt}")
+                        traceback.print_exc()
+                    time.sleep(retry_delay)
+
+            if result_text is None:
+                result_text = f"[ERROR after {max_retries} attempts]"
+                if debug:
+                    print(f"[FAILED] Could not get result for image '{image}' and prompt:\n{prompt}")
+
+            image_result.append(result_text)
+
+        all_results.append(image_result)
+
+    return pd.DataFrame(all_results, columns=columns)
+
+
+
+def transcription_info(transcriptions, prompt, columns, headers, debug=False, max_retries=3, retry_delay=2):
+    """
+    Sends each transcription to Claude with the prompt, extracts comma-separated data, and returns a dataframe.
+
+    Args:
+        transcriptions (list[str]): List of transcription strings
+        prompt (str): Prompt to prepend to each transcription
+        columns (list[str]): Output column names (including transcription column at the end)
+        headers (dict): Claude API headers
+        debug (bool): Show debug info
+        max_retries (int): Max retry attempts
+        retry_delay (int): Delay between retries (seconds)
+
+    Returns:
+        pd.DataFrame: Results table
+    """
+    
+    all_results = []
+
+    for trans in transcriptions:
+        attempt = 0
+        result_list = None
+
+        while attempt < max_retries:
+            try:
+                full_prompt = prompt + trans
+                print(full_prompt)
+
+                result = call_claude(full_prompt, headers=headers, debug=debug)
+
+                if not result or 'content' not in result or not result['content']:
+                    raise ValueError("Malformed Claude response or empty content")
+
+                text = result['content'][0].get('text', '')
+                result_list = [item.strip() for item in text.split(',')]
+
+                # If we expect len(columns)-1 (excluding transcription), check shape
+                expected_fields = len(columns) - 1  # transcription is added later
+                if len(result_list) != expected_fields:
+                    raise ValueError(f"Expected {expected_fields} fields, got {len(result_list)}")
+
+                break  # success
+
+            except Exception as e:
+                attempt += 1
+                if debug:
+                    print(f"[Retry {attempt}/{max_retries}] Error with transcription:\n{trans}")
+                    traceback.print_exc()
+                time.sleep(retry_delay)
+
+        if result_list is None:
+            # Create a row of error messages + the transcription
+            result_list = [f"[ERROR after {max_retries} attempts]"] * (len(columns) - 1)
+
+        result_list.append(trans)  # Include transcription at the end
+        all_results.append(result_list)
+
+    return pd.DataFrame(all_results, columns=columns)

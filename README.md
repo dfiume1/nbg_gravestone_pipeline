@@ -10,7 +10,7 @@ Providence’s Northern Burial Ground (NBG) is unique in its size (100,000+) and
 
 For now, run the code in the notebook called Pipeline.ipynb
 
-**Note: Make sure your images are less than 5MB!**
+**Note: Make sure your images are less than 5MB! You will recieve an error if not**
 
 1. You need an API key for Claude, which you can get here: https://www.anthropic.com/api
 2. Clone the repo in your folder of choice
@@ -19,7 +19,7 @@ For now, run the code in the notebook called Pipeline.ipynb
 - If Windows: nbg\Scripts\activate
 - If macOS/Linux: nbg/bin/activate
 - pip install -r requirements.txt 
-You're now good to go! If you encounter issues, try changing your python version in this environment to 3.10.13
+- You're now good to go! If you encounter issues, try changing your python version in this environment to 3.10.13
 
 4. Place your API Key in a file called credentials.txt in the /notebooks folder.
 5. Place images in data/input.
@@ -27,13 +27,13 @@ You're now good to go! If you encounter issues, try changing your python version
 7. Run the rest of the code blocks. 
 8. Your output should be data/output!
 
-## Time and Cost Benchmarks
+### Time and Cost Benchmarks
 
 When running on the test images, the Claude responses took approximately:
-- (Currently still in development)
-- x seconds / image
-- x $ / image
+- ~20-30 seconds / image
+- ~2 cents / image
 
 ## For Development
 - You can edit the functions in llm_helper_functions and ocr_helper_functions. This would be necessary if you wanted to try to use a different LLM, use a different OCR model, and/or try and reduce the amount of tokens to the LLM for cost saving purposes. 
 
+Feel free to email me any questions or concerns! 
